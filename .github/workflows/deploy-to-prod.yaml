@@ -44,7 +44,18 @@ jobs:
           CICD_PROJECT_ID: ${{ vars.CICD_PROJECT_ID }}
         run: |
           IMAGE_URI="${REGION}-docker.pkg.dev/${CICD_PROJECT_ID}/fraud-detector-docker/fraud-detector:${GITHUB_SHA}"
-          gcloud builds submit --tag "${IMAGE_URI}" --project "${CICD_PROJECT_ID}" --quiet
+          BUILD_ID=$(gcloud builds submit --tag "${IMAGE_URI}" --project "${CICD_PROJECT_ID}" --async --format='value(id)')
+          echo "Cloud Build started: ${BUILD_ID}"
+          while true; do
+            STATUS=$(gcloud builds describe "${BUILD_ID}" --project "${CICD_PROJECT_ID}" --format='value(status)' 2>/dev/null)
+            echo "Build status: ${STATUS}"
+            if [ "$STATUS" = "SUCCESS" ]; then break; fi
+            if [ "$STATUS" = "FAILURE" ] || [ "$STATUS" = "CANCELLED" ] || [ "$STATUS" = "TIMEOUT" ]; then
+              echo "Build failed with status: ${STATUS}"
+              exit 1
+            fi
+            sleep 15
+          done
 
       - name: Deploy training pipeline to production
         env:

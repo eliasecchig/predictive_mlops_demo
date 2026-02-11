@@ -65,6 +65,7 @@ variable "cicd_roles" {
     "roles/bigquery.jobUser",
     "roles/iam.serviceAccountUser",
     "roles/serviceusage.serviceUsageConsumer",
+    "roles/logging.viewer",
   ]
 }
 
