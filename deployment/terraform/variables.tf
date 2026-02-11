@@ -63,6 +63,8 @@ variable "cicd_roles" {
     "roles/cloudbuild.builds.builder",
     "roles/bigquery.dataEditor",
     "roles/bigquery.jobUser",
+    "roles/iam.serviceAccountUser",
+    "roles/serviceusage.serviceUsageConsumer",
   ]
 }
 
