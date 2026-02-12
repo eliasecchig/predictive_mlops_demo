@@ -1,196 +1,142 @@
-# Predictive MLOps Demo — E2E Fraud Detection on Google Cloud
+# Predictive MLOps Starter Pack
 
-A reusable, clone-and-run solution demonstrating the end-to-end predictive MLOps lifecycle on Google Cloud. Covers the full journey from exploratory data analysis and local model iteration to production-grade pipelines with scheduled retraining, batch scoring, monitoring, and CI/CD.
+Clone. Run. Ship to production.
 
-**Dataset**: FraudFinder (public fraud detection dataset in BigQuery)
-**ML Framework**: scikit-learn / XGBoost
-**Orchestration**: Vertex AI Pipelines (KFP v2)
-**Monitoring**: Vertex AI Model Monitoring
-**CI/CD**: GitHub Actions (Workload Identity Federation)
-**Infra**: Terraform (multi-project: dev / staging / prod)
+A ready-to-use template for building production ML systems on Google Cloud. Comes with a working fraud detection pipeline you can run end-to-end in under an hour, then swap in your own model.
 
----
+```
+Data (BigQuery)  -->  Feature Engineering  -->  Train (XGBoost)  -->  Evaluate
+                                                                        |
+                                              Monitor (drift)  <--  Register (Model Registry)
+                                                                        |
+                                              Score (batch)    -->  Predictions (BigQuery)
+```
 
-## Quick Start
+## What's in the box
 
-### Prerequisites
+- **Working ML pipeline** — feature engineering, training, evaluation, model registration, batch scoring
+- **Model monitoring** — automated drift detection comparing training vs serving data
+- **Local-first development** — run the full pipeline on your laptop before touching the cloud
+- **Production CI/CD** — GitHub Actions with Workload Identity Federation (no service account keys)
+- **Multi-environment infra** — Terraform for dev / staging / prod, one command each
+- **Scheduled retraining** — weekly training, 6-hourly scoring, all configurable via YAML
+- **AI coding agent support** — [`GEMINI.md`](GEMINI.md) gives Gemini Code Assist (and other coding agents) full project context so they can make changes that actually work
 
-- Google Cloud project(s) with billing enabled
-- Python 3.10+
-- [uv](https://docs.astral.sh/uv/) installed
-- `gcloud` CLI authenticated
-- Terraform >= 1.0.0
-- GitHub repository (for CI/CD)
-
-### Install
+## Get running in 4 commands
 
 ```bash
-make install
+make install                 # Install dependencies
+gcloud auth application-default login
+make setup-data              # Load 100K transactions into BigQuery (~10s)
+make run-training-local      # Run the full pipeline on your machine
 ```
 
----
+That's it. You'll see feature engineering, model training (AUC ~0.89), evaluation, and registration — all running locally via KFP's subprocess runner.
 
-## Project Structure
-
-```
-predictive_mlops_demo/
-├── notebooks/                  # Exploration: EDA + feature eng + local training
-│   └── 01_exploratory.ipynb
-├── fraud_detector/             # Production Python package
-│   ├── config.py               # YAML config loader
-│   ├── feature_engineering.py  # BQ read → pandas transforms → BQ write
-│   ├── training.py             # XGBoost train, evaluate, save
-│   ├── scoring.py              # Load model, predict, write to BQ
-│   ├── monitoring.py           # Vertex AI Model Monitoring setup
-│   └── utils.py                # BQ/GCS helpers
-├── pipelines/                  # KFP pipeline definitions
-│   ├── training_pipeline.py
-│   ├── scoring_pipeline.py
-│   ├── submit_pipeline.py      # Compile + submit to Vertex AI
-│   └── components/             # KFP component definitions
-├── config/                     # Pipeline configuration (YAML)
-│   ├── training.yaml
-│   ├── scoring.yaml
-│   └── monitoring.yaml
-├── tests/                      # Unit and integration tests
-├── deployment/terraform/       # Infrastructure as code
-└── .github/workflows/          # CI/CD pipelines
-```
-
----
-
-## Command Cheatsheet
-
-| Command | Description |
-|---------|-------------|
-| `make install` | Install all dependencies with uv |
-| `make test` | Run all tests (unit + integration) |
-| `make test-unit` | Run unit tests only |
-| `make lint` | Check code style with ruff |
-| `make format` | Auto-format code |
-| `make notebook` | Launch Jupyter Lab |
-| `make run-training-local` | Run training pipeline locally |
-| `make run-scoring-local` | Run scoring pipeline locally |
-| `make submit-training` | Submit training pipeline to Vertex AI |
-| `make submit-scoring` | Submit scoring pipeline to Vertex AI |
-| `make schedule-training` | Create/update training schedule |
-| `make schedule-scoring` | Create/update scoring schedule |
-| `make setup-dev-env` | Provision dev infrastructure (Terraform) |
-| `make setup-prod` | Provision staging + prod infrastructure |
-
----
-
-## 1. Explore & Iterate (Notebook)
+## Ship to Vertex AI
 
 ```bash
-make notebook
+export PROJECT_ID=<your-project>
+make submit-training         # Builds container, submits to Vertex AI Pipelines
+make submit-scoring          # Score all transactions, write predictions to BigQuery
 ```
 
-Open `notebooks/01_exploratory.ipynb` to walk through:
-- **EDA**: Explore raw transactions and labels in BigQuery
-- **Feature engineering**: Compute rolling window features (count, avg, max) per customer and terminal
-- **Model training**: Train XGBoost classifier, evaluate with AUC-ROC, precision, recall
-- **Experiment tracking**: Log metrics to Vertex AI Experiments
+The training pipeline registers the model to Vertex AI Model Registry and sets up weekly drift monitoring automatically.
 
-> **Note**: Feature engineering uses pandas for portability. The layer is swappable — SQL-in-BQ, BigFrames, or Dataproc can be substituted without changing the rest of the pipeline.
-
----
-
-## 2. Run Pipelines Locally
+## Set up production
 
 ```bash
-make run-training-local
-make run-scoring-local
+make setup-prod              # Terraform: staging + prod infra, WIF, GitHub secrets
+git push origin main         # Triggers CI/CD: lint -> test -> deploy to staging
 ```
 
-KFP supports local execution via `kfp.local.init()`. This runs the full pipeline DAG on your machine — same components, no cloud costs. Use this to debug component failures before submitting to Vertex AI.
+Production deployment is a manual approval away.
 
----
+| Trigger | Action |
+|---------|--------|
+| PR to main | Lint + unit tests |
+| Push to main | Deploy to staging |
+| Manual dispatch | Deploy to production + create schedules |
 
-## 3. Deploy to a Dev Environment
+## Make it yours
 
-```bash
-# Set your dev project
-gcloud config set project YOUR_DEV_PROJECT_ID
-
-# Provision dev infrastructure
-make setup-dev-env
-
-# Submit pipelines to Vertex AI
-make submit-training
-make submit-scoring
-```
-
-Verify in the [Vertex AI console](https://console.cloud.google.com/vertex-ai/pipelines):
-- Pipeline DAG execution
-- Model in Vertex AI Model Registry
-- Predictions in BigQuery
-
----
-
-## 4. Set Up the Path to Production (CI/CD)
-
-```bash
-# Provision staging + prod infra, WIF, GitHub Actions secrets
-make setup-prod
-```
-
-This runs Terraform to provision:
-- Staging and production GCP infrastructure
-- Workload Identity Federation (keyless GitHub → GCP auth)
-- GitHub Actions secrets and variables
-
-**Workflow**:
-1. PR to main → `pr_checks.yaml` runs tests
-2. Push to main → `staging.yaml` deploys to staging
-3. Manual approval → `deploy-to-prod.yaml` deploys to production
-
----
-
-## 5. Schedule Pipelines
-
-```bash
-make schedule-training    # Weekly retraining (Sunday 2am)
-make schedule-scoring     # Batch scoring every 6 hours
-```
-
-Schedules are configured in `config/training.yaml` and `config/scoring.yaml`. Uses Vertex AI `PipelineJobSchedule` — no Cloud Scheduler needed.
-
----
-
-## 6. Monitor Your Model
-
-Vertex AI Model Monitoring detects:
-- **Data drift**: Feature distribution shifts (training vs. serving data)
-- **Prediction drift**: Score distribution changes over time
-
-Configure alert thresholds in `config/monitoring.yaml`. View results in the [Model Monitoring dashboard](https://console.cloud.google.com/vertex-ai/model-monitoring).
-
----
-
-## 7. Customize for Your Use Case
-
-| What to change | Where |
-|---------------|-------|
-| Dataset / tables | `config/*.yaml` + `fraud_detector/feature_engineering.py` |
-| Model type | `fraud_detector/training.py` |
-| Feature engineering | `fraud_detector/feature_engineering.py` (or swap to SQL/BigFrames/Dataproc) |
-| Pipeline steps | `pipelines/components/` + `pipelines/*_pipeline.py` |
-| Schedules | `config/training.yaml`, `config/scoring.yaml` |
+| Swap this | Edit here |
+|-----------|-----------|
+| Dataset / tables | `fraud_detector/config/*.yaml` |
+| Model algorithm | `fraud_detector/model.py` |
+| Features | `fraud_detector/model.py` (`compute_features`) |
+| Pipeline steps | `fraud_detector/pipelines/components/` |
+| Drift thresholds | `fraud_detector/config/monitoring.yaml` |
+| Schedules | `fraud_detector/config/training.yaml`, `scoring.yaml` |
 | Infrastructure | `deployment/terraform/` |
 | CI/CD | `.github/workflows/` |
 
----
+## Project layout
 
-## Google Cloud Services Used
+```
+fraud_detector/
+  model.py                       # FraudDetector class — features, training, evaluation, scoring
+  config.py                      # YAML config loader with ${VAR} resolution
+  config/
+    training.yaml                # Training pipeline config + XGBoost params
+    scoring.yaml                 # Scoring pipeline config
+    monitoring.yaml              # Drift thresholds + alert emails
+  pipelines/
+    training_pipeline.py         # FE -> Train -> Evaluate -> Register -> Monitor
+    scoring_pipeline.py          # FE -> Predict -> Write
+    submit_pipeline.py           # CLI: --local / --compile-only / --schedule-only
+    components/                  # @dsl.component definitions (one per step)
 
-| Service | Purpose |
-|---------|---------|
-| BigQuery | Data warehouse — raw data, features, predictions |
-| Vertex AI Pipelines | Orchestrate training, scoring, monitoring |
-| Vertex AI Model Registry | Version and alias trained models |
-| Vertex AI Experiments | Track experiment metrics during exploration |
-| Vertex AI Model Monitoring | Detect data/prediction drift |
-| Cloud Storage | Model artifacts and pipeline staging |
-| Artifact Registry | Docker images for pipeline components |
-| Workload Identity Federation | Keyless GitHub Actions → GCP auth |
+scripts/                         # Data setup, e2e test
+tests/                           # Unit + integration tests
+deployment/terraform/            # Multi-project infra (dev, staging, prod)
+.github/workflows/               # CI/CD (PR checks, staging deploy, prod deploy)
+```
+
+## Commands
+
+| Command | What it does |
+|---------|-------------|
+| `make install` | Install all dependencies |
+| `make setup-data` | Load sample data into BigQuery |
+| `make run-training-local` | Run training pipeline locally |
+| `make run-scoring-local` | Run scoring pipeline locally |
+| `make submit-training` | Submit training to Vertex AI |
+| `make submit-scoring` | Submit scoring to Vertex AI |
+| `make test-unit` | Run unit tests |
+| `make lint` | Check code style |
+| `make notebook` | Launch Jupyter Lab |
+| `make setup-dev-env` | Provision dev infrastructure |
+| `make setup-prod` | Provision staging + prod + CI/CD |
+
+## Google Cloud services used
+
+| Service | Role |
+|---------|------|
+| **BigQuery** | Data warehouse — raw data, features, predictions |
+| **Vertex AI Pipelines** | Orchestrate training, scoring, monitoring |
+| **Vertex AI Model Registry** | Version and manage trained models |
+| **Vertex AI Model Monitoring** | Detect feature drift (Jensen-Shannon divergence) |
+| **Cloud Storage** | Model artifacts and pipeline staging |
+| **Artifact Registry** | Container images for pipeline steps |
+| **Workload Identity Federation** | Keyless GitHub Actions -> GCP auth |
+
+## Develop with AI coding agents
+
+This repo ships with [`GEMINI.md`](GEMINI.md) — a context file that teaches coding agents (Gemini Code Assist, Claude Code, Copilot, Cursor, etc.) how this project works. It includes:
+
+- **Architecture and design decisions** — so the agent understands *why* the code is structured this way
+- **20+ gotchas and learnings** — BigQuery decimal types, timezone handling, KFP caching quirks, cross-project IAM, ARM-to-AMD64 builds, and more
+- **Code patterns** — the right way to prepare features, handle model artifacts, check pipeline status
+- **Development workflow** — edit, test, run locally, submit to Vertex AI
+
+When you ask an agent to add a feature, fix a bug, or extend a pipeline, it reads `GEMINI.md` first and avoids the pitfalls that would otherwise cost you hours of debugging. The file is designed for [Gemini Code Assist](https://cloud.google.com/products/gemini/code-assist) but works with any agent that reads project-level context files.
+
+## Prerequisites
+
+- Google Cloud project with billing enabled
+- Python 3.11+
+- [uv](https://docs.astral.sh/uv/) package manager
+- `gcloud` CLI installed and authenticated
+- Docker (for building pipeline container images)
+- Terraform >= 1.0 (for infrastructure provisioning)
