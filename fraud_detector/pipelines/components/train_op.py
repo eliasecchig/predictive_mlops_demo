@@ -1,4 +1,4 @@
-"""KFP component — model training."""
+"""KFP component -- model training."""
 
 from kfp import dsl
 
@@ -19,12 +19,22 @@ def train_op(
     scale_pos_weight: float = 10.0,
 ) -> None:
     """Train XGBoost classifier; model artifact is stored automatically by Vertex."""
+    import logging
+    import os
+
     import pandas as pd
     from google.cloud import bigquery
 
     from fraud_detector import FraudDetector
 
+    logger = logging.getLogger(__name__)
+
+    logger.info("-" * 60)
+    logger.info("[TRAIN] STEP: Model Training")
+    logger.info("-" * 60)
+
     client = bigquery.Client(project=project_id)
+    logger.info("[IN] Reading features from BigQuery…")
     query = read_features_sql.format(
         project_id=project_id,
         bq_dataset=bq_dataset,
@@ -32,6 +42,7 @@ def train_op(
     )
     df = client.query(query).to_dataframe()
     df["tx_ts"] = pd.to_datetime(df["tx_ts"], utc=True).dt.tz_localize(None)
+    logger.info("[DATA] Loaded %d rows from BigQuery", len(df))
 
     train_df, _ = FraudDetector.split(df, split_date)
 
@@ -44,9 +55,8 @@ def train_op(
         "objective": "binary:logistic",
     }
 
-    import os
-
     fd = FraudDetector()
+    logger.info("[TRAIN] Training XGBoost (max_depth=%d, n_estimators=%d)…", max_depth, n_estimators)
     fd.train(train_df, xgb_params=xgb_params)
 
     # Save as model.joblib in artifact directory (required by sklearn serving container)

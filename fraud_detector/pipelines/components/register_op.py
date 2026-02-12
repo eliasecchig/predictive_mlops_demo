@@ -1,4 +1,4 @@
-"""KFP component — conditional model registration."""
+"""KFP component -- conditional model registration."""
 
 from kfp import dsl
 
@@ -19,14 +19,18 @@ def register_op(
 
     logger = logging.getLogger(__name__)
 
+    logger.info("-" * 60)
+    logger.info("[REG] STEP: Model Registration")
+    logger.info("-" * 60)
+
     if auc_roc < threshold_auc:
-        logger.warning("AUC %.4f < threshold %.4f — model NOT registered", auc_roc, threshold_auc)
+        logger.warning("[WARN] AUC %.4f < threshold %.4f -- model NOT registered", auc_roc, threshold_auc)
         return "NOT_REGISTERED"
 
     # Local runs: model.uri is a local path, skip Vertex registration
     if not model.uri.startswith("gs://"):
         logger.info(
-            "Local run — skipping Vertex registration (AUC %.4f, model at %s)",
+            "[LOCAL] Local run -- skipping Vertex registration (AUC %.4f, model at %s)",
             auc_roc,
             model.uri,
         )
@@ -44,5 +48,5 @@ def register_op(
         serving_container_image_uri="us-docker.pkg.dev/vertex-ai/prediction/sklearn-cpu.1-3:latest",
         labels={"auc_roc": str(round(auc_roc, 4)).replace(".", "_")},
     )
-    logger.info("Model registered: %s (resource: %s)", model_display_name, registered.resource_name)
+    logger.info("[OK] Model registered: %s (resource: %s)", model_display_name, registered.resource_name)
     return registered.resource_name

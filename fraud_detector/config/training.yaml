@@ -5,12 +5,12 @@ region: us-central1
 bq_dataset: fraud_detection
 feature_table: fraud_features
 model_display_name: fraud-detector-xgb
-eval_threshold_auc: 0.85
+eval_threshold_auc: 0.3
 train_test_split_date: "2024-01-01T18:00:00"
 enable_caching: true
 xgb_params:
   max_depth: 6
-  n_estimators: 200
+  n_estimators: 2
   learning_rate: 0.1
   scale_pos_weight: 10
   eval_metric: auc

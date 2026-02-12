@@ -1,4 +1,4 @@
-"""FraudDetector — pure ML class: feature engineering, training, evaluation, prediction."""
+"""FraudDetector -- pure ML class: feature engineering, training, evaluation, prediction."""
 
 import logging
 from pathlib import Path
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 class FraudDetector:
-    """Fraud detection ML logic — no I/O, no GCP dependencies.
+    """Fraud detection ML logic -- no I/O, no GCP dependencies.
 
     I/O (BigQuery, GCS, Vertex AI) is handled by pipeline components.
 
@@ -37,7 +37,7 @@ class FraudDetector:
         self.model: XGBClassifier | None = None
         self.metrics: dict | None = None
 
-    # ── Features ────────────────────────────────────────────────────────
+    # -- Features --------------------------------------------------------
 
     @staticmethod
     def feature_columns(windows: list[int] | None = None) -> list[str]:
@@ -83,10 +83,10 @@ class FraudDetector:
                 df[f"avg_tx_amount_{w}d_{suffix}"] = avgs.values
                 df[f"max_tx_amount_{w}d_{suffix}"] = maxs.values
 
-        logger.info("Feature engineering complete. Shape: %s", df.shape)
+        logger.info("[OK] Feature engineering complete. Shape: %s", df.shape)
         return df
 
-    # ── Training ────────────────────────────────────────────────────────
+    # -- Training --------------------------------------------------------
 
     @staticmethod
     def split(
@@ -101,7 +101,7 @@ class FraudDetector:
         train = df[ts_col < split_ts].copy()
         test = df[ts_col >= split_ts].copy()
         logger.info(
-            "Train: %d rows, Test: %d rows (split at %s)",
+            "[SPLIT] Train: %d rows, Test: %d rows (split at %s)",
             len(train),
             len(test),
             split_date,
@@ -128,7 +128,7 @@ class FraudDetector:
         self.model.fit(X_train, y_train)
 
         logger.info(
-            "Model trained with %d features, %d samples",
+            "[OK] Model trained with %d features, %d samples",
             len(feature_cols),
             len(X_train),
         )
@@ -168,14 +168,14 @@ class FraudDetector:
         }
 
         logger.info(
-            "Evaluation — AUC-ROC: %.4f, Precision: %.4f, Recall: %.4f",
+            "[EVAL] Evaluation -- AUC-ROC: %.4f, Precision: %.4f, Recall: %.4f",
             auc_roc,
             self.metrics["precision_fraud"],
             self.metrics["recall_fraud"],
         )
         return self.metrics
 
-    # ── Scoring ─────────────────────────────────────────────────────────
+    # -- Scoring ---------------------------------------------------------
 
     def predict(
         self,
@@ -197,10 +197,10 @@ class FraudDetector:
         df["fraud_prediction"] = predictions
         df["scored_at"] = pd.Timestamp.now()
 
-        logger.info("Batch prediction complete: %d rows scored", len(df))
+        logger.info("[OK] Batch prediction complete: %d rows scored", len(df))
         return df
 
-    # ── Persistence ─────────────────────────────────────────────────────
+    # -- Persistence -----------------------------------------------------
 
     def save_model(self, path: str) -> str:
         """Save model to a local path using joblib."""
@@ -208,11 +208,11 @@ class FraudDetector:
             raise RuntimeError("No model to save. Call train() first.")
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         joblib.dump(self.model, path)
-        logger.info("Model saved to %s", path)
+        logger.info("[SAVE] Model saved to %s", path)
         return path
 
     def load_model(self, path: str) -> "FraudDetector":
         """Load model from a local path. Sets self.model."""
         self.model = joblib.load(path)
-        logger.info("Model loaded from %s", path)
+        logger.info("[PKG] Model loaded from %s", path)
         return self

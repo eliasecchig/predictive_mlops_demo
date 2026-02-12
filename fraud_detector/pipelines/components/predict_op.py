@@ -1,4 +1,4 @@
-"""KFP component — batch prediction."""
+"""KFP component -- batch prediction."""
 
 from kfp import dsl
 
@@ -37,7 +37,7 @@ def predict_op(
         df = client.query(query).to_dataframe()
     except Exception as e:
         if "Not found" in str(e) and predictions_table in str(e):
-            logger.info("Predictions table not found — scoring all features")
+            logger.info("Predictions table not found -- scoring all features")
             fallback = f"SELECT * FROM `{project_id}.{bq_dataset}.{feature_table}`"
             df = client.query(fallback).to_dataframe()
         else:

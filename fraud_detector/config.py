@@ -1,4 +1,4 @@
-"""Config loader — reads YAML config files and resolves environment variables."""
+"""Config loader -- reads YAML config files and resolves environment variables."""
 
 import os
 from pathlib import Path
@@ -13,11 +13,14 @@ def load_config(config_name: str) -> dict:
     """Load a YAML config file from the config/ directory.
 
     Environment variable placeholders like ${PROJECT_ID} are resolved
-    from the environment. If the variable is not set, the placeholder
-    is left as-is.
+    from the environment. If PROJECT_ID is not set, it is auto-detected
+    from the active gcloud configuration.
     """
     config_path = CONFIG_DIR / f"{config_name}.yaml"
     text = config_path.read_text()
+    # Auto-resolve PROJECT_ID if not in environment
+    if "${PROJECT_ID}" in text and "PROJECT_ID" not in os.environ:
+        os.environ["PROJECT_ID"] = get_project_id()
     # Resolve ${VAR} placeholders
     for key, value in os.environ.items():
         text = text.replace(f"${{{key}}}", value)

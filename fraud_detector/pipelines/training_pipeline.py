@@ -32,6 +32,7 @@ def training_pipeline(
     default_drift_threshold: float = 0.3,
     predictions_table: str = "fraud_scores",
     monitoring_schedule: str = "0 8 * * 1",
+    skip_profiling: bool = False,
 ):
     # Step 1: Feature engineering
     fe_task = feature_engineering_op(
@@ -41,14 +42,15 @@ def training_pipeline(
         read_raw_sql=read_raw_sql,
     )
 
-    # Step 2a: Data profiling (runs in parallel with training)
-    data_profile_op(
-        project_id=project_id,
-        bq_dataset=bq_dataset,
-        feature_table=feature_table,
-        split_date=split_date,
-        read_features_sql=read_features_sql,
-    ).after(fe_task)
+    # Step 2a: Data profiling (runs in parallel with training, skipped locally)
+    if not skip_profiling:
+        data_profile_op(
+            project_id=project_id,
+            bq_dataset=bq_dataset,
+            feature_table=feature_table,
+            split_date=split_date,
+            read_features_sql=read_features_sql,
+        ).after(fe_task)
 
     # Step 2b: Train model (outputs dsl.Model artifact, stored by Vertex)
     train_task = train_op(

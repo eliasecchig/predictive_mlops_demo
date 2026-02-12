@@ -1,4 +1,4 @@
-"""KFP component — model evaluation."""
+"""KFP component -- model evaluation."""
 
 from kfp import dsl
 
@@ -17,6 +17,7 @@ def evaluate_op(
     classification_metrics: dsl.Output[dsl.ClassificationMetrics],
 ) -> float:
     """Evaluate trained model on holdout set. Returns AUC-ROC score."""
+    import logging
     import os
 
     import pandas as pd
@@ -24,7 +25,14 @@ def evaluate_op(
 
     from fraud_detector import FraudDetector
 
+    logger = logging.getLogger(__name__)
+
+    logger.info("-" * 60)
+    logger.info("[EVAL] STEP: Model Evaluation")
+    logger.info("-" * 60)
+
     client = bigquery.Client(project=project_id)
+    logger.info("[IN] Reading features for evaluation…")
     query = read_features_sql.format(
         project_id=project_id,
         bq_dataset=bq_dataset,
@@ -32,12 +40,14 @@ def evaluate_op(
     )
     df = client.query(query).to_dataframe()
     df["tx_ts"] = pd.to_datetime(df["tx_ts"], utc=True).dt.tz_localize(None)
+    logger.info("[DATA] Loaded %d rows from BigQuery", len(df))
 
     _, test_df = FraudDetector.split(df, split_date)
 
     fd = FraudDetector()
     model_path = os.path.join(os.path.dirname(model.path), "model.joblib")
     fd.load_model(model_path)
+    logger.info("[EVAL] Evaluating model on %d test samples…", len(test_df))
     metrics = fd.evaluate(test_df)
 
     # Log scalar metrics to Vertex AI Metrics artifact

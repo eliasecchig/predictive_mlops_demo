@@ -1,4 +1,4 @@
-"""KFP component — Vertex AI Model Monitoring v2 setup."""
+"""KFP component -- Vertex AI Model Monitoring v2 setup."""
 
 from fraud_detector.pipelines import pipeline_component
 
@@ -38,9 +38,13 @@ def setup_monitoring_op(
 
     logger = logging.getLogger(__name__)
 
+    logger.info("-" * 60)
+    logger.info("[MON] STEP: Model Monitoring Setup")
+    logger.info("-" * 60)
+
     # Skip if model was not registered
     if model_resource_name in ("NOT_REGISTERED", "LOCAL_ONLY"):
-        logger.info("Skipping monitoring setup — model status: %s", model_resource_name)
+        logger.info("[SKIP] Skipping monitoring setup -- model status: %s", model_resource_name)
         return f"SKIPPED:{model_resource_name}"
 
     try:
@@ -86,7 +90,7 @@ def setup_monitoring_op(
             filter=f'display_name="{monitor_display_name}"',
         )
         for old_monitor in existing_monitors:
-            logger.info("Deleting existing monitor: %s", old_monitor.name)
+            logger.info("[DEL] Deleting existing monitor: %s", old_monitor.name)
             old_monitor.delete(force=True)
 
         # Create model monitor
@@ -98,7 +102,7 @@ def setup_monitoring_op(
             model_version_id=model_version,
             model_monitoring_schema=schema,
         )
-        logger.info("Model monitor created: %s", monitor.name)
+        logger.info("[OK] Model monitor created: %s", monitor.name)
 
         # BigQuery data sources
         baseline_uri = f"bq://{project_id}.{bq_dataset}.{feature_table}"
@@ -124,10 +128,10 @@ def setup_monitoring_op(
                 gcs_base_dir=f"gs://{project_id}-fraud-detector-pipeline-root/monitoring",
             ),
         )
-        logger.info("Monitoring schedule created for %s", monitor.name)
+        logger.info("[SCHED] Monitoring schedule created for %s", monitor.name)
 
         return monitor.name
 
     except Exception:
-        logger.exception("Monitoring setup failed (non-blocking)")
+        logger.exception("[ERR] Monitoring setup failed (non-blocking)")
         return "ERROR:monitoring_setup_failed"

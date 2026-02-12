@@ -1,4 +1,4 @@
-"""KFP component — write predictions to BigQuery (logging step)."""
+"""KFP component -- write predictions to BigQuery (logging step)."""
 
 from fraud_detector.pipelines import pipeline_component
 

@@ -25,6 +25,7 @@ pipelines = [
     "ydata-profiling>=4.12.0",
     "setuptools<82",
     "keyrings.google-artifactregistry-auth>=1.1.0",
+    "docker>=7.0.0",
 ]
 notebook = [
     "jupyterlab>=4.0.0",

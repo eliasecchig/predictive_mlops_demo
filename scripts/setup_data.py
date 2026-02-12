@@ -58,17 +58,17 @@ def load_parquet_to_bq(
     logger.info("Loaded %d rows into %s", table.num_rows, table_ref)
 
 
-def generate_synthetic_data(n_transactions: int = 50_000, fraud_rate: float = 0.012, seed: int = 42):
+def generate_synthetic_data(n_transactions: int = 10_000, fraud_rate: float = 0.012, seed: int = 42):
     """Generate synthetic FraudFinder-like data."""
     rng = np.random.RandomState(seed)
 
     n_customers = 5000
     n_terminals = 200
 
-    # Generate transactions
+    # Generate transactions spanning Jan 2024 (matches train_test_split_date)
     tx_ids = list(range(n_transactions))
-    start_date = pd.Timestamp("2023-01-01")
-    tx_ts = [start_date + pd.Timedelta(hours=rng.randint(0, 365 * 24)) for _ in range(n_transactions)]
+    start_date = pd.Timestamp("2024-01-01")
+    tx_ts = [start_date + pd.Timedelta(hours=rng.randint(0, 31 * 24)) for _ in range(n_transactions)]
     tx_ts.sort()
 
     customer_ids = rng.randint(0, n_customers, size=n_transactions)

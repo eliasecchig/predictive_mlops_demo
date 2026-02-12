@@ -58,13 +58,11 @@ def _get_image_uri(tag: str) -> str:
 
 def _image_exists(image_uri: str) -> bool:
     """Check if a Docker image tag already exists in Artifact Registry."""
-    image_path, tag = image_uri.rsplit(":", 1)
     result = subprocess.run(
-        ["gcloud", "artifacts", "docker", "tags", "list", image_path, f"--filter=tag={tag}", "--format=value(tag)"],
+        ["gcloud", "artifacts", "docker", "images", "describe", image_uri],
         capture_output=True,
-        text=True,
     )
-    return result.returncode == 0 and tag in result.stdout
+    return result.returncode == 0
 
 
 def _docker_available() -> bool:
@@ -106,7 +104,7 @@ def _build_and_push(image_uri: str) -> None:
 def ensure_deps_image() -> None:
     """Ensure the deps-only container image is built and pushed.
 
-    - If IMAGE_TAG is already set (CI/CD), uses it as-is — no build.
+    - If IMAGE_TAG is already set (CI/CD), uses it as-is -- no build.
     - Otherwise computes a deps hash, checks Artifact Registry,
       and builds only if the image doesn't exist yet.
     """
@@ -293,6 +291,7 @@ def run_local(pipeline_name: str, config: dict) -> None:
             default_drift_threshold=float(min(monitoring_config.get("drift_thresholds", {}).values() or [0.3])),
             predictions_table=monitoring_config.get("predictions_table", "fraud_scores"),
             monitoring_schedule=monitoring_config.get("schedule", "0 8 * * 1"),
+            skip_profiling=True,
         )
     elif pipeline_name == "scoring":
         from fraud_detector.pipelines.scoring_pipeline import scoring_pipeline
@@ -383,7 +382,7 @@ def submit_to_vertex(
             cron=schedule,
             service_account=pipeline_sa,
         )
-        print(f"Schedule created: {display_name} — cron: {schedule}")
+        print(f"Schedule created: {display_name} -- cron: {schedule}")
     else:
         job = aiplatform.PipelineJob(
             display_name=display_name,

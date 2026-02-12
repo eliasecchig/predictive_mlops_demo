@@ -59,6 +59,9 @@ schedule-scoring:
 
 # ── Data Setup ───────────────────────────────────────────────────────────────
 setup-data:
+	uv run python scripts/setup_data.py --source synthetic --n-transactions 10000 $(ARGS)
+
+setup-data-gcs:
 	uv run python scripts/setup_data.py $(ARGS)
 
 setup-data-full:

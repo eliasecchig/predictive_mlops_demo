@@ -22,28 +22,28 @@ This installs all dependencies (including pipelines, notebook, and dev extras) v
 
 ```bash
 gcloud auth application-default login
-export PROJECT_ID=<your-gcp-project-id>
 ```
+
+`PROJECT_ID` is auto-detected from your `gcloud` config. You can override it with `export PROJECT_ID=<your-gcp-project-id>` if needed.
 
 ## Step 3: Load Data into BigQuery
 
 ```bash
-make setup-data              # ~100K rows sample (fast, ~10s)
+make setup-data              # 10K synthetic rows (fast demo)
+make setup-data-gcs          # ~100K rows from GCS
 make setup-data-full         # ~3.1M rows full dataset
 ```
 
-This loads real FraudFinder transaction data from a public GCS bucket (`gs://fraudfinder-public-data/`) into BigQuery tables `tx` and `txlabels` in the `fraud_detection` dataset.
-
-**Data source**: 1 month of transactions from `cymbal-fraudfinder.txbackup.all` (Jan 2024), ~2% fraud rate.
+Default uses synthetic data (10K rows, ~2% fraud rate) for fast iteration. Use `setup-data-gcs` or `setup-data-full` for real FraudFinder data from `gs://fraudfinder-public-data/`.
 
 ### Verified output
 
 | Table | Rows |
 |-------|------|
-| `tx` | 101,490 |
-| `txlabels` | (joined via `tx_id`) |
-| `fraud_features` | 101,490 (written by feature engineering) |
-| `fraud_scores` | 101,490 (written by scoring pipeline) |
+| `tx` | 10,000 |
+| `txlabels` | 10,000 |
+| `fraud_features` | 10,000 (written by feature engineering) |
+| `fraud_scores` | 10,000 (written by scoring pipeline) |
 
 ## Step 4: Run Training Pipeline Locally
 
@@ -83,9 +83,6 @@ make lint
 ## Step 6: Submit Training Pipeline to Vertex AI
 
 ```bash
-export PROJECT_ID=asp-test-dev
-export CICD_PROJECT_ID=asp-test-dev
-export PIPELINE_SA_EMAIL=fraud-detector-pipelines@$PROJECT_ID.iam.gserviceaccount.com
 make submit-training
 ```
 
@@ -143,7 +140,6 @@ repository_name        = "predictive_mlops_demo"
 Then apply:
 
 ```bash
-export GITHUB_TOKEN=<your-github-pat>
 make setup-prod
 ```
 
@@ -195,7 +191,8 @@ This triggers the CI/CD pipeline:
 | `make run-scoring-local` | Run scoring pipeline locally (KFP) |
 | `make submit-training` | Submit training pipeline to Vertex AI |
 | `make submit-scoring` | Submit scoring pipeline to Vertex AI |
-| `make setup-data` | Load sample data into BigQuery |
+| `make setup-data` | Load 10K synthetic data into BigQuery |
+| `make setup-data-gcs` | Load ~100K GCS sample into BigQuery |
 | `make setup-data-full` | Load full dataset into BigQuery |
 | `make setup-dev-env` | Deploy dev infrastructure (optional) |
 | `make setup-prod` | Deploy staging/prod infrastructure + CI/CD |
