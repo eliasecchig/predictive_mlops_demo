@@ -10,6 +10,7 @@ from fraud_detector.config import load_config, load_sql
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 VERSION_FILE = PROJECT_ROOT / "fraud_detector" / "_version.py"
+_DEPS_TAG_CACHE = PROJECT_ROOT / ".deps-image-tag"
 
 
 # ---------------------------------------------------------------------------
@@ -105,8 +106,10 @@ def ensure_deps_image() -> None:
     """Ensure the deps-only container image is built and pushed.
 
     - If IMAGE_TAG is already set (CI/CD), uses it as-is -- no build.
-    - Otherwise computes a deps hash, checks Artifact Registry,
-      and builds only if the image doesn't exist yet.
+    - Otherwise computes a deps hash.  If the hash matches the locally
+      cached tag (written after a successful AR check or build), skip
+      the network call entirely.  Only queries Artifact Registry when
+      the deps hash changes.
     """
     if os.environ.get("IMAGE_TAG"):
         return  # CI/CD already built and tagged the image
@@ -114,10 +117,16 @@ def ensure_deps_image() -> None:
     tag = _compute_deps_hash()
     image_uri = _get_image_uri(tag)
 
-    if _image_exists(image_uri):
+    # Fast path: local cache says this tag was already pushed
+    cached_tag = _DEPS_TAG_CACHE.read_text().strip() if _DEPS_TAG_CACHE.exists() else ""
+    if cached_tag == tag:
         print(f"Image up to date: {image_uri}")
+    elif _image_exists(image_uri):
+        print(f"Image up to date: {image_uri}")
+        _DEPS_TAG_CACHE.write_text(tag)
     else:
         _build_and_push(image_uri)
+        _DEPS_TAG_CACHE.write_text(tag)
 
     # Set for BASE_IMAGE resolution when pipeline modules are imported
     os.environ["IMAGE_TAG"] = tag
@@ -392,7 +401,10 @@ def submit_to_vertex(
             enable_caching=caching,
         )
         job.submit(service_account=pipeline_sa, experiment=experiment_name)
+        job_id = job.resource_name.split("/")[-1]
+        url = f"https://console.cloud.google.com/vertex-ai/pipelines/locations/{region}/runs/{job_id}?project={project_id}"
         print(f"Pipeline submitted: {display_name} (experiment: {experiment_name})")
+        print(url)
 
 
 def main():
